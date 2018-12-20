@@ -1,0 +1,113 @@
+kmer<-read.csv(filename,sep="\t",header=F)
+kmer<-kmer[,-c(2,3)]  
+colnames(kmer)<-c("DNA","n_chr")
+head(kmer)
+
+#the length of the nullomer
+kmer$n_chr<-nchar(as.character(kmer$DNA))
+
+#leaving only the ORF nullomers k=12 and later k=15
+kmer_orf<-kmer[which(kmer$n_chr == 12 |  kmer$n_chr == 15),]
+
+#use the DNA to translate to protein sequence
+require(Biostrings)
+orf$protein <- as.character(translate(DNAStringSet(orf$DNA))) #making the translated protein as a string
+orf$DNA<-as.character(orf$DNA) #making the DNA motif as a string
+orf$n_chr<-as.character(orf$n_chr) #register how long the DNA string is to later exlude the != 12 & 15 
+#x1<-nrow(orf)
+orf_noSTOP<-orf[!grepl("\\*\\b",orf$protein),]
+#x2<-nrow(orf)
+#x_ratio <- x2/x1 #yield the ration of nullomer resulting in protein without a stop codon
+
+
+
+   
+
+##############################################################################
+### looking at the most repetitive protein sequences ########################
+##############################################################################
+
+#summary of the pentapeptide composition in the dataframe without a stop codon
+sum<-orf_noSTOP %>% 
+  group_by(protein) %>%
+  summarise(no_rows = length(protein))
+# ordering in descended order
+
+sum <- sum[order(-sum$no_rows),]
+
+write.csv2(sum,paste(filename2,".csv",sep="")
+#plot of the top 20 most repetitive proteins
+sum_p <- sum[1:20,]
+p<- ggplot(sum_p,aes(x=protein,y=no_rows))+ 
+  geom_bar(stat = "identity", width=0.7, fill="Red")+
+  scale_x_discrete(limits=sum_p$protein)+ 
+  geom_text(aes(label=sum_p$no_rows), vjust=1.6, color="white", size=2.5)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+  
+  
+##############################################################################
+### Comparing the translated proteins to the never expressed protein list ####
+##############################################################################  
+   
+#comapring to 77 never found pentapeptides
+
+# never expressed peptides (=nep) this is according to the UniRef100 proteome database
+nep<-c("CDCMW","CECWY","CGMWW","CHWWC","CHWWM","CIWHW","CIWMW",
+       "CKCHW","CMCWM","CMHMW","CMMWQ","CMWAH","CQWWH","CWCMY",
+       "CWCWH","CWMWN","CWMWW","CWWHM","CWWMF","CYWMW","EWCMC",
+       "EWNCW","FWMWH","HCMYW","HMCWI","HMCWM","HMCWW","HMWCH",
+       "HWCNW","HWMCW","HYWWY","KWCWT","MCHWY","MCMWP","MCWWH",
+       "MCWWY","MHCWF","MMCNW","MMWYC","MWCTM","MWHCW","MWHMC",
+       "MWHWW","MWWCW","MWWNM","NMWMC","NWMWC","PCWWM","PWWCH",
+       "QWCCM","QWCWM","QWMWW","RCWMM","TMWMW","VMCWH","WCMMW",
+       "WCQHM","WCWMY","WCYHM","WFQCM","WHCCM","WHIMW","WMCHM",
+       "WMCHW","WMCNW","WMCWF","WMQCW","WWHCH","WWHCW","WWHHC",
+       "WWHMC","WWMHM","WWYCW","WYPCW","YHWCM","YMCHW","YWWMC")
+
+   
+   
+   
+i<-1 #row number in ORF df
+j<-1 #object number in the NEP list
+
+#working with "x" as a generic object
+x<-orf_noSTOP
+
+for (i in 1:nrow(x)){
+  #testing each i protein string againg all possible 77 never expressed pepetide
+  #for now we will test the i string as the pattern because
+  n = 1
+  j = 1
+  #list=list()
+  while(j<=length(nep)){
+    if(grepl(x$protein[i],nep[[j]])==F){
+     j<-j+1
+    } else {
+      #add the nep motif to a saved list
+      #list[[n]]=nep[[j]]
+      n<-n+1
+      j<-j+1
+    }
+    
+  }
+  #recording the number of matches between the nullomer translated protein and the nep data
+  x$n_motifs<- n
+  print(i)
+}
+
+
+##############################################################################
+#### Expanding the search for ORFs that starts from the 2nd  or 3rd base #####
+##############################################################################
+
+
+# Starting at position 2
+orf$DNA<-as.character(orf$DNA)
+orf$protein_2 <- translate(DNAStringSet(substring(orf$DNA,2)))
+orf$protein_2<-as.factor(orf$protein_2)
+
+
+#starting at position 3
+orf$protein_3 <- translate(DNAStringSet(substring(orf$DNA,3)))
+orf$protein_3<-as.factor(orf$protein_3)
